@@ -1,6 +1,7 @@
 # 门店评论分析与自动回复 Agent
 
 https://www.coze.cn/store/agent/7641188023723900968?bot_id=true
+https://pan.quark.cn/s/9365341750f9
 ## 一、项目简介
 
 门店评论分析与自动回复 Agent 是一个结合 Python 数据处理与 Coze 智能体的 AI 应用项目。
