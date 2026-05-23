@@ -6,11 +6,11 @@
 
 ## 一、项目简介
 
-门店评论分析与自动回复 Agent 是一个结合 Python 数据处理与 Coze 智能体的 AI 应用项目。
+门店评论分析与自动回复 Agent 是一个结合 Python 数据处理、FastAPI 接口服务、Render 公网部署与 Dify 工作流的 AI 应用项目。
 
-项目面向餐饮、咖啡店、零售门店等本地生活场景，能够对门店评论数据进行统计分析，识别差评集中问题，并生成经营分析周报、改进建议和商家回复话术。
+项目面向餐饮、咖啡店、零售门店等本地生活场景，能够对门店评论数据进行统计分析，识别差评集中问题，并自动生成经营分析周报、改进建议和商家回复话术。
 
-本项目不是简单调用大模型生成回复，而是先通过 Python 对评论数据进行结构化处理，再将统计结果和典型差评输入 Coze，由智能体生成更具业务价值的经营分析报告。
+本项目不是简单把原始评论直接交给大模型，而是先通过 Python / Pandas 对评论数据进行结构化处理，再使用 FastAPI 将分析能力封装为 API，并部署到 Render 公网环境。随后通过 Dify 的 HTTP 请求节点调用该 API，再由 Dify 的 LLM 节点生成最终门店经营分析报告。
 
 ---
 
@@ -135,26 +135,26 @@ Coze 智能体基于该文件生成：
 
 ## 四、项目流程
 
-整体流程如下：
+当前项目流程如下：
 
 ```text
-门店评论 CSV
+门店评论 CSV / JSON
       ↓
-Python 读取数据
+Python / Pandas 读取并清洗数据
       ↓
-基础评分统计
+评分统计、差评筛选、关键词分类
       ↓
-筛选差评
+生成结构化 JSON / Markdown
       ↓
-关键词规则分类
+FastAPI 封装为接口服务
       ↓
-统计问题分布
+Render 部署为公网 API
       ↓
-生成 Coze 分析输入文本
+Dify HTTP 请求节点调用 API
       ↓
-Coze 生成经营周报
+Dify LLM 节点生成经营分析周报
       ↓
-输出商家回复与运营建议
+输出商家回复与运营改进建议
 ```
 
 ---
@@ -172,12 +172,28 @@ Store-Review-Analysis-Agent/
 │   ├── negative_category_summary.csv
 │   └── coze_weekly_report_input.md
 ├── docs/
-│   └── 项目3_门店评论分析Agent_测试记录.md
+│   ├── 门店评论分析Agent_测试记录.md
+│   ├── 项目3_API接口测试记录.md
+│   ├── API到Coze闭环测试记录.md
+│   ├── Dify调用公网API测试记录.md
+│   ├── 作品集展示版.md
+│   └── 面试讲解稿.md
+├── prompt/
+│   ├── coze_system_prompt.md
+│   └── dify_llm_prompt.md
 ├── screenshots/
 │   ├── python-output.png
 │   ├── coze-report-result.png
-│   └── reply-suggestion-result.png
+│   ├── reply-suggestion-result.png
+│   ├── render-health-result.png
+│   ├── render-docs-result.png
+│   ├── render-csv-markdown-result.png
+│   ├── dify-api-markdown-success.png
+│   └── dify-final-report-result.png
 ├── analyze_reviews.py
+├── main.py
+├── review_service.py
+├── requirements.txt
 └── README.md
 ```
 
@@ -192,6 +208,11 @@ Store-Review-Analysis-Agent/
 - 门店评论分析
 - 商家回复生成
 - 经营周报生成
+- 后端接口：FastAPI、Uvicorn
+- 数据处理：Python、Pandas
+- 部署平台：Render
+- AI 工作流：Dify HTTP 请求节点、LLM 节点
+- 输出格式：JSON、Markdown
 
 ---
 
@@ -199,25 +220,15 @@ Store-Review-Analysis-Agent/
 
 ### 1. 安装依赖
 
-```text
-pip install pandas
+```bash
+pip install -r requirements.txt
 ```
 
-### 2. 准备数据
+### 2. 本地运行 Python 脚本
 
-将评论数据放入：
-
-```text
-data/store_reviews.csv
-```
-
-### 3. 运行脚本
-
-```text
+```bash
 python analyze_reviews.py
 ```
-
-### 4. 查看输出文件
 
 运行后会生成：
 
@@ -229,9 +240,56 @@ output/negative_category_summary.csv
 output/coze_weekly_report_input.md
 ```
 
+### 3. 本地启动 FastAPI 服务
+
+```bash
+uvicorn main:app --reload
+```
+
+启动后访问：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### 4. 公网 API 地址
+
+本项目已部署到 Render：
+
+```text
+https://store-review-analysis-agent.onrender.com
+```
+
+Swagger 接口文档：
+
+```text
+https://store-review-analysis-agent.onrender.com/docs
+```
+
 ---
 
-## 八、测试数据说明
+## 八、API 接口说明
+
+| 接口 | 方法 | 说明 |
+|---|---|---|
+| `/health` | GET | 健康检查接口 |
+| `/analyze_reviews` | POST | 接收评论 JSON，返回结构化分析结果 |
+| `/generate_coze_input` | POST | 接收评论 JSON，返回 Coze / Dify 可用 Markdown |
+| `/upload_reviews_csv` | POST | 上传 CSV 文件，返回评论分析 JSON |
+| `/upload_reviews_csv_generate_markdown` | POST | 上传 CSV 文件，返回 Markdown 字段 |
+| `/upload_reviews_csv_markdown_text` | POST | 上传 CSV 文件，直接返回 Markdown 纯文本 |
+
+核心公网接口示例：
+
+```text
+https://store-review-analysis-agent.onrender.com/generate_coze_input
+```
+
+Dify 工作流中使用 HTTP 请求节点调用该接口，获取 Markdown 分析文本后，再交给 LLM 节点生成门店经营分析周报。
+
+---
+
+## 九、测试数据说明
 
 本项目使用模拟咖啡店评论数据进行测试。
 
@@ -254,7 +312,7 @@ output/coze_weekly_report_input.md
 
 ---
 
-## 九、测试结果
+## 十、测试结果
 
 ### 1. 差评问题分布
 
@@ -287,7 +345,7 @@ Coze 根据 Python 生成的结构化输入，输出了门店评论分析周报�
 
 ---
 
-## 十、项目截图
+## 十一、项目截图
 
 ### 1. Python 数据处理输出
 
@@ -301,21 +359,51 @@ Coze 根据 Python 生成的结构化输入，输出了门店评论分析周报�
 
 ![差评回复建议](./screenshots/reply-suggestion-result.png)
 
+### 4. 本地 FastAPI 接口文档
+
+![本地FastAPI接口文档](./screenshots/api-local-docs.png)
+
+### 5. 本地 CSV 上传生成 Markdown 结果
+
+![本地CSV上传生成Markdown结果](./screenshots/api-csv-markdown-result.png)
+
+### 6. Render 公网健康检查
+
+![Render公网健康检查](./screenshots/render-health-result.png)
+
+### 7. Render 公网接口文档
+
+![Render公网接口文档](./screenshots/render-docs-result.png)
+
+### 8. Render 公网 CSV 上传生成 Markdown 结果
+
+![Render公网CSV上传生成Markdown结果](./screenshots/render-csv-markdown-result.png)
+
+### 9. Dify 调用公网 API 成功
+
+![Dify调用公网API成功](./screenshots/dify-api-markdown-success.png)
+
+### 10. Dify 自动生成经营分析周报
+
+![Dify自动生成经营分析周报](./screenshots/dify-final-report-result.png)
+
 ---
 
-## 十一、项目亮点
+## 十二、项目亮点
 
-1. 不是直接让大模型分析原始评论，而是先通过 Python 完成结构化数据处理；
-2. 支持评论评分统计、差评筛选和问题分布统计；
-3. 使用规则分类实现基础可控的问题归因；
-4. 通过 Coze 生成结构化经营周报和商家回复建议；
-5. 针对商家回复加入边界控制，避免虚构“已经整改”、退款、赔偿、免单等承诺；
-6. 输出结果可用于门店周报、运营复盘和客服回复参考；
-7. 项目覆盖了 Python 数据处理与 AI 应用落地两个能力点。
+1. 使用 Python / Pandas 对门店评论 CSV 进行结构化处理，包括评分统计、差评筛选、问题分类和问题分布统计；
+2. 没有直接把原始评论交给大模型，而是先通过数据处理生成结构化结果，提高 AI 分析的准确性和可控性；
+3. 使用关键词规则实现基础问题分类，支持等待时间、配送物流、服务态度、环境卫生、产品质量等常见门店问题；
+4. 使用 FastAPI 将评论分析能力封装为 API 服务，支持 JSON 请求和 CSV 文件上传；
+5. API 可返回结构化 JSON，也可生成 Coze / Dify 可用的 Markdown 分析文本；
+6. 将 FastAPI 服务部署到 Render 公网环境，使外部系统可以通过 HTTP 请求调用；
+7. 在 Dify 中通过 HTTP 请求节点调用公网 API，并由 LLM 节点自动生成门店经营分析周报；
+8. 针对商家回复加入边界控制，避免虚构“已经整改”、退款、赔偿、免单等高风险表达；
+9. 项目完整覆盖“数据处理 → API 封装 → 公网部署 → 工作流调用 → AI 报告生成”的 AI 应用落地链路。
 
 ---
 
-## 十二、Prompt 设计重点
+## 十三、Prompt 设计重点
 
 Coze 智能体的 Prompt 重点包括：
 
@@ -349,36 +437,46 @@ Coze 智能体的 Prompt 重点包括：
 
 ---
 
-## 十三、当前局限
+## 十四、当前局限
 
 当前项目仍然是学习型和演示型项目，存在以下不足：
 
-1. 数据集规模较小，目前只有 20 条模拟评论；
+1. 数据集规模较小，目前主要使用 20 条模拟评论进行测试；
 2. 评论分类主要依赖关键词规则，复杂语义下可能分类不准确；
-3. 尚未接入真实门店平台或评论 API；
-4. Coze 目前主要负责分析与生成，尚未实现自动读取 CSV；
-5. 未加入可视化图表；
-6. 商家回复仍需人工复核后使用。
+3. Dify 当前测试主要通过 JSON 请求调用 API，Dify 直接上传 CSV 文件的工作流仍可继续优化；
+4. 暂未接入真实门店平台或评论 API；
+5. 暂未接入数据库，无法长期保存历史评论和分析报告；
+6. 暂未加入可视化图表；
+7. 暂未制作面向普通用户的前端上传页面；
+8. 商家回复仍需要人工复核后再用于真实业务场景。
 
 ---
 
-## 十四、后续优化方向
+## 十五、后续优化方向
 
 后续可以继续扩展：
 
-- 增加到 100 条以上评论数据；
-- 引入更细致的评论分类规则；
-- 接入 AI 语义分类；
-- 增加 Matplotlib 图表输出；
-- 支持自动生成 Excel 周报；
-- 增加 Streamlit 可视化页面；
-- 接入 Coze 工作流代码节点；
-- 支持批量生成差评回复；
-- 增加人工审核与回复确认流程。
+- 增加 Excel 文件上传能力；
+- 将关键词分类升级为 AI 语义分类；
+- 在 Dify 中进一步实现文件上传调用 API；
+- 增加数据库，保存历史评论和分析报告；
+- 增加可视化图表，展示评分趋势和问题分布；
+- 增加前端页面，支持运营人员上传评论文件并下载分析报告；
+- 增加报告导出功能，例如 Markdown / Word / PDF；
+- 增加 API 鉴权，避免接口被无关请求滥用；
+- 增加人工审核机制，确保商家回复正式使用前可复核。
 
-## 十五、项目总结
+---   
+
+## 十六、项目总结
 
 门店评论分析与自动回复 Agent 是一个面向门店运营场景的 AI 应用项目。
+
+项目最初通过 Python / Pandas 完成评论数据读取、评分统计、差评筛选、评论分类和结构化输入生成；后续使用 FastAPI 将评论分析能力封装为 API 服务，并部署到 Render 公网环境，使外部系统可以通过 HTTP 请求调用。
+
+在 Dify 工作流中，项目通过 HTTP 请求节点调用公网 API，再由 LLM 节点基于 API 返回的 Markdown 分析文本生成门店经营分析周报和商家回复建议。
+
+该项目证明了候选人具备基础 Python 数据处理能力、API 封装能力、公网部署能力、Dify 工作流编排能力、Prompt 边界控制能力，以及将 AI 应用于门店运营分析场景的实践能力。
 
 项目通过 Python 完成评论数据读取、评分统计、差评筛选、评论分类和结构化输入生成，再通过 Coze 智能体生成经营周报、改进建议和商家回复话术。
 
