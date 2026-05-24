@@ -1,8 +1,12 @@
 # 门店评论分析与自动回复 Agent
 
 ## 项目链接
-- Coze 智能体体验链接：https://www.coze.cn/store/agent/7641188023723900968?bot_id=true
-- 项目演示视频链接：https://pan.quark.cn/s/9365341750f9
+
+- Coze 智能体体验链接（V1）：https://www.coze.cn/store/agent/7641188023723900968?bot_id=true
+- Render 公网 API：https://store-review-analysis-agent.onrender.com
+- Swagger 接口文档：https://store-review-analysis-agent.onrender.com/docs
+- 项目演示视频（V1：Python + Coze）：https://pan.quark.cn/s/9365341750f9
+- 项目演示视频（V2：FastAPI + Render + Dify）：https://pan.quark.cn/s/28727f491c45
 
 ## 一、项目简介
 
